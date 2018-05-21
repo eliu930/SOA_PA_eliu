@@ -1,0 +1,134 @@
+---
+title: "SOA Predictive Analytics Certificate Program"
+output: html_notebook
+---
+
+Run CHUNK 1 to install packages. This may take some time. The green triangle will return to indicate the chunk has finished running. You may be asked to restart R as part of this process. Respond "Yes" to that request.
+
+To run a chunk, simply click on the green triangle in the upper right corner. There will be some output in red. While that may look like error messages, they can be ignored. Clicking the "x" in the output box will make it go away.
+
+This chunk is designed to identify those packages not already installed and just install those. If you are concerned about not having the latest versions and want to install the full list, see the commented instructions in the chunk.
+
+```{r}
+#CHUNK 1
+
+# Install required packages
+required.packages = c("corrgram", "corrplot",  "dplyr", "ggplot2", 
+                      "plotly", "readr", "reshape2", "RColorBrewer",
+                      "rpart", "tidyr", "tm", "tree", 
+                      "wordcloud", "knitr", "xgboost", "foreign", "data.table",
+                      "gridExtra", "png", "datasets", "GGally", "e1071", "MASS",
+                      "caret", "methods", "statmod", "stats", "graphics", "RCurl",
+                      "jsonlite", "tools", "utils", "h2o", "fastICA", "raster",
+                      "rgdal", "scatterplot3d", "infotheo", "glmnet", "rpart.plot",
+                      "randomForest", "ngram", "stm", "pROC", "insuranceData",
+                      "cplm", "UsingR", "pdp", "rmarkdown", "stringdist", 
+                      "microbenchmark")
+new.packages<- required.packages[!(required.packages %in% installed.packages()
+                                    [,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+#If you want to install/reinstall all the packages, place a comment symbol, #, in front of the line of code above this comment and remove the symbol from the line below.
+#install.packages(required.packages)
+```  
+
+Run the code in CHUNK 2. What do you see?
+Try to hover over the bubbles and zoom in & out (using the + and - at the top of the graph). Think about how you can use graphics like this in your presentations. You'll see how easy it is after module 3. 
+ 
+```{r}
+#CHUNK 2
+# One of the many plotly examples: https://plot.ly/r/bubble-charts/
+library(plotly)
+
+data <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv")
+
+data.2007 <- data[which(data$year == 2007), ]
+data.2007 <- data.2007[order(data.2007$continent, data.2007$country), ]
+slope <- 2.666051223553066e-05
+data.2007$size <- sqrt(data.2007$pop*slope)
+colors <- c('#4AC6B7', '#1972A4', '#965F8A', '#FF7070', '#C61951')
+
+plot_ly(data.2007, x = data.2007$gdpPercap, y = data.2007$lifeExp, color = data.2007$continent, colors = colors, 
+        type = 'scatter', mode = 'markers',
+        marker = list(symbol = 'circle', size = data.2007$size, sizemode = 'diameter', sizeref = 0.85,
+                      line = list(width = 2, color = '#FFFFFF')),
+        text = paste('Country:', data.2007$country, '<br>Life Expectancy:', data.2007$lifeExp, 
+                     '<br>GDP:', data.2007$gdpPercap,
+                     '<br>Pop.:', data.2007$pop)) %>%
+  layout(title = 'Life Expectancy v. Per Capita GDP, 2007',
+         xaxis = list(title = 'GDP per capita (2000 dollars)',
+                      gridcolor = 'rgb(255, 255, 255)',
+                      range = c(2.003297660701705, 5.191505530708712),
+                      type = 'log', zerolinewidth = 1, ticklen = 5, gridwidth = 2),
+         yaxis = list(title = 'Life Expectancy (years)',
+                      gridcolor = 'rgb(255, 255, 255)',
+                      range = c(36.12621671352166, 91.72921793264332), 
+                      zerolinewidth = 1, ticklen = 5, gridwith = 2),
+         paper_bgcolor = 'rgb(243, 243, 243)',
+         plot_bgcolor = 'rgb(243, 243, 243)')
+```
+
+Before running the next chunk, you will need to modify the R code so that the two filenames and pathways point to the location of the files on your computer. Alternatively, you can set the working directory to be the file location and then you only need to put in the file name. To change the working directory, use Session>Set Working Directory>Choose Directory ...
+
+After making that change, run CHUNk 3. The dataset is large, so may take some time to load.
+
+```{r}
+#CHUNK 3
+# The original post is here https://www.kaggle.com/robotgames/d/cdc/mortality/cause-of-death-word-cloud/comments
+# Load data
+death <- read.csv("C:/Users/ellio/Dropbox/SOA/Predictive Analytic Certificate/Welcome/DeathRecords.csv")
+icd10code <- read.csv("C:/Users/ellio/Dropbox/SOA/Predictive Analytic Certificate/Welcome/icd10Code.csv")
+
+# Load libraries
+library(dplyr)
+library(tm)
+library(wordcloud)
+
+# Join data by ICD10 code
+names(icd10code) <- c("Icd10Code", "Icd10Code_Description")
+death <- left_join(death, icd10code, by="Icd10Code")
+death$Icd10Code <- factor(death$Icd10Code)
+rm(icd10code)
+
+# Draw a sample
+set.seed(1000)
+sample.size <- 10000
+icd.sample <- sample(1:nrow(death), sample.size)
+icd <- as.character(death$Icd10Code_Description[icd.sample])
+
+# Build the corpus
+icd <- gsub("disease|diseas|unspecified|specified|acute|
+            without|failure|failur|chronic|specification|
+            describe|describ|chronic|acute|biological|
+            essential|elsewhere|without", "", icd)
+write.csv(icd, "temp.csv")
+myCorpus <- Corpus(VectorSource(readLines("temp.csv")))
+myCorpus <- tm_map(myCorpus, tolower)
+myCorpus <- tm_map(myCorpus, removePunctuation)
+myCorpus <- tm_map(myCorpus, removeNumbers)
+myCorpus <- tm_map(myCorpus, removeWords, stopwords("english"))
+
+
+```
+
+This completes some of the prep work. Now we can plot the cloud. Go ahead and run CHUNK 4.
+
+```{r}
+#CHUNK 4
+# Create the word cloud
+wordcloud(myCorpus, scale = c(4, 0.4), random.order = FALSE,
+          max.words = 100, #  change the max words to 50 
+          rot.per = 0.35, use.r.layout = FALSE,
+          colors = brewer.pal(8, "Dark2")) #  you can change the color too
+```
+
+This is a typical use of text mining, which we'll introduce toward the end of Module 5. Try to play with the max.words and colors setting above. For example, chage 150 to 50 and then click the run triangle to get a new cloud. To see the names of some other color options, run CHUNK 5 below. So, instead of Dark2, you might try BrBG.
+  
+```{r}
+#CHUNK 5
+library(RColorBrewer)
+par(mar = c(0, 4, 0, 0), mfrow = c(1, 3))
+display.brewer.all(type = "div")
+display.brewer.all(type = "seq")
+display.brewer.all(type = "qual") 
+```
+
